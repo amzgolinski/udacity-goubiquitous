@@ -65,7 +65,7 @@
             android:theme="@style/AppTheme.Details">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.example.android.sunshine.app.MainActivity" />
+                android:value="com.example.android.sunshine.app.WatchActivity" />
         </activity>
         <activity
             android:name=".SettingsActivity"
@@ -74,7 +74,7 @@
             android:theme="@style/SettingsTheme">
             <meta-data
                 android:name="android.support.PARENT_ACTIVITY"
-                android:value="com.example.android.sunshine.app.MainActivity" />
+                android:value="com.example.android.sunshine.app.WatchActivity" />
         </activity>
         <provider
             android:authorities="@string/content_authority"
