@@ -1,8 +1,31 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <dimen name="digital_text_size">40dp</dimen>
-    <dimen name="digital_text_size_round">45dp</dimen>
-    <dimen name="digital_x_offset">15dp</dimen>
-    <dimen name="digital_x_offset_round">25dp</dimen>
-    <dimen name="digital_y_offset">90dp</dimen>
+
+  <!-- square -->
+  <dimen name="time_offset_x">45dp</dimen>
+  <dimen name="date_offset_x">25dp</dimen>
+  <dimen name="temp_offset_x">15dp</dimen>
+  <dimen name="y_offset">60dp</dimen>
+  <dimen name="time_text_size">40dp</dimen>
+  <dimen name="date_text_size">18dp</dimen>
+  <dimen name="temp_text_size">30dp</dimen>
+
+  <!-- round -->
+  <dimen name="time_offset_x_round">62dp</dimen>
+  <dimen name="date_offset_x_round">35dp</dimen>
+  <dimen name="temp_offset_x_round">30dp</dimen>
+  <dimen name="y_offset_round">80dp</dimen>
+  <dimen name="time_text_size_round">45dp</dimen>
+  <dimen name="date_text_size_round">22dp</dimen>
+  <dimen name="temp_text_size_round">33dp</dimen>
+
+  <!-- general -->
+  <dimen name="icon_size">50dp</dimen>
+  <dimen name="time_margin_bottom">30dp</dimen>
+  <dimen name="date_margin_bottom">25dp</dimen>
+  <dimen name="divider_margin_bottom">45dp</dimen>
+  <dimen name="temp_margin_right">5dp</dimen>
+  <dimen name="icon_margin_vertical">35dp</dimen>
+  <dimen name="icon_margin_right">15dp</dimen>
+
 </resources>

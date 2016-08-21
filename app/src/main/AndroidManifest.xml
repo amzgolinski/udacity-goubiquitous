@@ -62,18 +62,12 @@
       android:label="@string/title_activity_detail"
       android:parentActivityName=".MainActivity"
       android:theme="@style/AppTheme.Details">
-      <meta-data
-        android:name="android.support.PARENT_ACTIVITY"
-        android:value="com.example.android.sunshine.app.WatchActivity"/>
     </activity>
     <activity
       android:name=".SettingsActivity"
       android:label="@string/title_activity_settings"
       android:parentActivityName=".MainActivity"
       android:theme="@style/SettingsTheme">
-      <meta-data
-        android:name="android.support.PARENT_ACTIVITY"
-        android:value="com.example.android.sunshine.app.WatchActivity"/>
     </activity>
 
     <provider

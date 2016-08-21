@@ -36,12 +36,22 @@ import com.example.android.sunshine.app.R;
 import com.example.android.sunshine.app.Utility;
 import com.example.android.sunshine.app.data.WeatherContract;
 import com.example.android.sunshine.app.muzei.WeatherMuzeiSource;
+import com.google.android.gms.common.ConnectionResult;
+import com.google.android.gms.common.api.GoogleApiClient;
+import com.google.android.gms.common.api.PendingResult;
+import com.google.android.gms.common.api.ResultCallback;
+import com.google.android.gms.wearable.Asset;
+import com.google.android.gms.wearable.DataApi;
+import com.google.android.gms.wearable.PutDataMapRequest;
+import com.google.android.gms.wearable.PutDataRequest;
+import com.google.android.gms.wearable.Wearable;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.BufferedReader;
+import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.InputStreamReader;
@@ -52,8 +62,12 @@ import java.net.URL;
 import java.util.Vector;
 import java.util.concurrent.ExecutionException;
 
-public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
-  public final String LOG_TAG = SunshineSyncAdapter.class.getSimpleName();
+public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements
+  GoogleApiClient.ConnectionCallbacks,
+  GoogleApiClient.OnConnectionFailedListener{
+
+  public static final String LOG_TAG = SunshineSyncAdapter.class.getSimpleName();
+
   public static final String ACTION_DATA_UPDATED =
     "com.example.android.sunshine.app.ACTION_DATA_UPDATED";
   // Interval at which to sync with the weather, in seconds.
@@ -96,8 +110,34 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
   public static final int LOCATION_STATUS_UNKNOWN = 3;
   public static final int LOCATION_STATUS_INVALID = 4;
 
+  GoogleApiClient mGoogleApiClient;
+
   public SunshineSyncAdapter(Context context, boolean autoInitialize) {
     super(context, autoInitialize);
+
+
+    mGoogleApiClient = new GoogleApiClient.Builder(context)
+      .addConnectionCallbacks(this)
+      .addOnConnectionFailedListener(this)
+      .addApi(Wearable.API)
+      .build();
+    mGoogleApiClient.connect();
+  }
+
+  @Override
+  public void onConnectionFailed(ConnectionResult result) {
+      Log.d(LOG_TAG, "onConnectionFailed: " + result);
+  }
+
+  @Override
+  public void onConnected(Bundle connectionHint) {
+    Log.d(LOG_TAG, "onConnected: " + connectionHint);
+    sendWeatherToWearable();
+  }
+
+  @Override
+  public void onConnectionSuspended(int cause) {
+    Log.d(LOG_TAG, "onConnectionSuspended: " + cause);
   }
 
   @Override
@@ -371,7 +411,6 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
         cVVector.add(weatherValues);
       }
 
-      int inserted = 0;
       // add to database
       if (cVVector.size() > 0) {
         ContentValues[] cvArray = new ContentValues[cVVector.size()];
@@ -386,6 +425,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
         updateWidgets();
         updateMuzei();
         notifyWeather();
+        sendWeatherToWearable();
       }
       Log.d(LOG_TAG, "Sync Complete. " + cVVector.size() + " Inserted");
       setLocationStatus(getContext(), LOCATION_STATUS_OK);
@@ -415,6 +455,83 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     }
   }
 
+  private void sendWeatherToWearable() {
+
+    Log.d(LOG_TAG, "sendWeatherToWearable");
+
+    final String TOPIC = "/sunshine-weather";
+    final String WEATHER_ID_KEY = "weatherId";
+    final String HIGH_TEMP_KEY = "highTemp";
+    final String LOW_TEMP_KEY = "lowTemp";
+    final String WEATHER_ICON = "weatherIcon";
+
+    if (mGoogleApiClient == null) {
+      return;
+    }
+
+    // query the content provider to get weather info
+    // TODO: this code is in two places.  Can it be refactored?
+
+    Context context = getContext();
+    // Last sync was more than 1 day ago, let's send a notification with the weather.
+    String locationQuery = Utility.getPreferredLocation(context);
+
+    Uri weatherUri = WeatherContract.WeatherEntry
+      .buildWeatherLocationWithDate(locationQuery, System.currentTimeMillis());
+
+    // we'll query our contentProvider, as always
+    Cursor cursor = context.getContentResolver()
+      .query(weatherUri, NOTIFY_WEATHER_PROJECTION, null, null, null);
+
+    if (cursor.moveToFirst()) {
+
+      int weatherId = cursor.getInt(INDEX_WEATHER_ID);
+      double high = cursor.getDouble(INDEX_MAX_TEMP);
+      double low = cursor.getDouble(INDEX_MIN_TEMP);
+
+      String highTemp = Utility.formatTemperature(context, high);
+      String lowTemp = Utility.formatTemperature(context, low);
+
+      PutDataMapRequest putDataMapReq = PutDataMapRequest.create(TOPIC);
+      putDataMapReq.getDataMap().putInt(WEATHER_ID_KEY, weatherId);
+      putDataMapReq.getDataMap().putString(HIGH_TEMP_KEY, highTemp);
+      putDataMapReq.getDataMap().putString(LOW_TEMP_KEY, lowTemp);
+
+      int artResourceId = Utility.getArtResourceForWeatherCondition(weatherId);
+      Bitmap bitmap = BitmapFactory.decodeResource(context.getResources(), artResourceId);
+      Asset asset = createAssetFromBitmap(bitmap);
+      putDataMapReq.getDataMap().putAsset(WEATHER_ICON, asset);
+
+      PutDataRequest putDataReq = putDataMapReq.asPutDataRequest();
+      PendingResult<DataApi.DataItemResult> pendingResult =
+        Wearable.DataApi.putDataItem(mGoogleApiClient, putDataReq);
+      pendingResult.setResultCallback(new ResultCallback<DataApi.DataItemResult>() {
+
+        @Override
+        public void onResult(final DataApi.DataItemResult result) {
+
+          if(result.getStatus().isSuccess()) {
+            Log.d(LOG_TAG, "Data item set: " + result.getDataItem().getUri());
+          } else {
+            String msg = String.format(
+              "Data item not set: %s %s",
+              result.getStatus().getStatusCode(),
+              result.getStatus().getStatusMessage()
+              );
+            Log.d(LOG_TAG, msg);
+          }
+        }
+      });
+
+    }
+  }
+
+  private static Asset createAssetFromBitmap(Bitmap bitmap) {
+    final ByteArrayOutputStream byteStream = new ByteArrayOutputStream();
+    bitmap.compress(Bitmap.CompressFormat.PNG, 100, byteStream);
+    return Asset.createFromBytes(byteStream.toByteArray());
+  }
+
   private void notifyWeather() {
     Context context = getContext();
     //checking the last update and notify if it' the first of the day
@@ -432,10 +549,12 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
         // Last sync was more than 1 day ago, let's send a notification with the weather.
         String locationQuery = Utility.getPreferredLocation(context);
 
-        Uri weatherUri = WeatherContract.WeatherEntry.buildWeatherLocationWithDate(locationQuery, System.currentTimeMillis());
+        Uri weatherUri = WeatherContract.WeatherEntry
+          .buildWeatherLocationWithDate(locationQuery, System.currentTimeMillis());
 
         // we'll query our contentProvider, as always
-        Cursor cursor = context.getContentResolver().query(weatherUri, NOTIFY_WEATHER_PROJECTION, null, null, null);
+        Cursor cursor = context.getContentResolver()
+          .query(weatherUri, NOTIFY_WEATHER_PROJECTION, null, null, null);
 
         if (cursor.moveToFirst()) {
           int weatherId = cursor.getInt(INDEX_WEATHER_ID);
@@ -454,6 +573,7 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
           int largeIconWidth = Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB
             ? resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_width)
             : resources.getDimensionPixelSize(R.dimen.notification_large_icon_default);
+
           @SuppressLint("InlinedApi")
           int largeIconHeight = Build.VERSION.SDK_INT >= Build.VERSION_CODES.HONEYCOMB
             ? resources.getDimensionPixelSize(android.R.dimen.notification_large_icon_height)
@@ -643,6 +763,19 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
     return newAccount;
   }
 
+  private class Weather {
+
+    int weatherId;
+    String highTemp;
+    String lowTemp;
+
+    public Weather(int id, String high, String low) {
+      weatherId = id;
+      highTemp = high;
+      lowTemp = low;
+    }
+  }
+
   private static void onAccountCreated(Account newAccount, Context context) {
         /*
          * Since we've created an account
@@ -661,7 +794,9 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter {
   }
 
   public static void initializeSyncAdapter(Context context) {
+    Log.d(LOG_TAG, "initializeSyncAdapter");
     getSyncAccount(context);
+    syncImmediately(context);
   }
 
   /**
