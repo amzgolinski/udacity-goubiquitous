@@ -115,13 +115,11 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements
   public SunshineSyncAdapter(Context context, boolean autoInitialize) {
     super(context, autoInitialize);
 
-
     mGoogleApiClient = new GoogleApiClient.Builder(context)
       .addConnectionCallbacks(this)
       .addOnConnectionFailedListener(this)
       .addApi(Wearable.API)
       .build();
-    mGoogleApiClient.connect();
   }
 
   @Override
@@ -425,7 +423,8 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements
         updateWidgets();
         updateMuzei();
         notifyWeather();
-        sendWeatherToWearable();
+        // connect to API to send data
+        mGoogleApiClient.connect();
       }
       Log.d(LOG_TAG, "Sync Complete. " + cVVector.size() + " Inserted");
       setLocationStatus(getContext(), LOCATION_STATUS_OK);
@@ -522,8 +521,9 @@ public class SunshineSyncAdapter extends AbstractThreadedSyncAdapter implements
           }
         }
       });
-
     }
+    // once we're done, disconnect
+    mGoogleApiClient.disconnect();
   }
 
   private static Asset createAssetFromBitmap(Bitmap bitmap) {
