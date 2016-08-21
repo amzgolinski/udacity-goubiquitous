@@ -3,4 +3,6 @@
   <string name="my_digital_name">Sunshine</string>
   <string name="am">AM</string>
   <string name="pm">PM</string>
+  <string name="date_format">E, MMM dd yyyy</string>
+  <string name="time_format">%02d</string>
 </resources>

@@ -117,9 +117,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
   private class Engine extends CanvasWatchFaceService.Engine implements DataApi.DataListener,
     GoogleApiClient.ConnectionCallbacks, GoogleApiClient.OnConnectionFailedListener {
 
-    private static final String DATE_FORMAT = "E, MMM dd yyyy";
     private static final String COLON_STRING = ":";
-    private static final String TIME_FORMAT = "%02d";
     private static final float DIVIDER_MULTIPLIER = .4f;
 
     final Handler mUpdateTimeHandler = new EngineHandler(this);
@@ -195,7 +193,8 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
       mTimeOffsetY = resources.getDimension(R.dimen.y_offset);
 
       mCalendar = Calendar.getInstance();
-      mFormat = new SimpleDateFormat(DATE_FORMAT, Locale.getDefault());
+      mFormat
+        = new SimpleDateFormat(resources.getString(R.string.date_format), Locale.getDefault());
 
       mGoogleApiClient = new GoogleApiClient.Builder(SunshineWatchFace.this)
         .addApi(Wearable.API)
@@ -389,9 +388,10 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
       float x = mTimeOffsetX;
       float y = mTimeOffsetY;
       String hourString;
+      String timeFormat = resources.getString(R.string.time_format);
       if (is24Hour) {
         hourString
-          = String.format(Locale.getDefault(), TIME_FORMAT, mCalendar.get(Calendar.HOUR_OF_DAY));
+          = String.format(Locale.getDefault(), timeFormat, mCalendar.get(Calendar.HOUR_OF_DAY));
       } else {
         int hour = mCalendar.get(Calendar.HOUR);
         if (hour == 0) {
@@ -409,7 +409,7 @@ public class SunshineWatchFace extends CanvasWatchFaceService {
 
       // Minute
       String minute
-        = String.format(Locale.getDefault(), TIME_FORMAT, mCalendar.get(Calendar.MINUTE));
+        = String.format(Locale.getDefault(), timeFormat, mCalendar.get(Calendar.MINUTE));
       canvas.drawText(minute, x, y, mMinutePaint);
       x += mMinutePaint.measureText(minute);
 
